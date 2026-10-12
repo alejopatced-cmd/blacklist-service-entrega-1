@@ -1,0 +1,19 @@
+# Entornos virtuales de Python
+venv/
+.venv/
+env/
+
+# Base de datos local SQLite (no debe subirse a GitHub)
+*.db
+
+# Cache de Python
+__pycache__/
+*.pyc
+
+# Archivos del sistema / editores
+.DS_Store
+.idea/
+.vscode/
+
+# Paquetes de despliegue
+*.zip
