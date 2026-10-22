@@ -1,0 +1,59 @@
+
+# buildspec.yml
+# -------------
+# Guion que AWS CodeBuild ejecuta en CADA build (Entrega 2 - Integracion Continua).
+#
+# Que hace, en orden:
+#   1. install     -> elige la version de Python del entorno de build.
+#   2. pre_build   -> instala las dependencias de la app (requirements.txt) + pytest.
+#   3. build       -> corre las pruebas con pytest. Si FALLAN, el build se marca
+#                     en ROJO y se detiene: NO se genera artefacto roto ("fallar rapido").
+#   4. post_build  -> mensaje informativo (el empaquetado real lo hace la seccion 'artifacts').
+#   5. artifacts   -> define QUE archivos se entregan como artefacto desplegable.
+#                     CodeBuild los empaqueta en un .zip y lo sube al bucket S3 de salida.
+#
+# Alcance Entrega 2: SOLO genera el artefacto (CI). NO despliega (eso es la Entrega 3 / CD).
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12            # misma version con la que probamos en local
+    commands:
+      - echo "== Fase INSTALL: entorno Python listo =="
+      - python --version
+
+  pre_build:
+    commands:
+      - echo "== Fase PRE_BUILD: instalando dependencias =="
+      - pip install --upgrade pip
+      - pip install -r requirements.txt   # dependencias de la app
+      - pip install pytest                # pytest NO va en requirements.txt (solo se usa para probar)
+
+  build:
+    commands:
+      - echo "== Fase BUILD: corriendo pruebas unitarias =="
+      - pytest -v
+      # Si algun test falla, pytest devuelve codigo != 0 -> CodeBuild marca el build en ROJO
+      # y NO continua a post_build ni genera artefacto. Esto es CI funcionando ("fallar rapido").
+
+  post_build:
+    commands:
+      - echo "== Fase POST_BUILD: pruebas OK, empaquetando artefacto =="
+
+# --- ARTIFACTS: el paquete desplegable que CodeBuild sube a S3 ---
+# 'files' lista que incluir. 'files: - "**/*"' tomaria TODO; por eso excluimos
+# lo que no debe ir al paquete (entorno virtual, caches, base local, git).
+artifacts:
+  files:
+    - "**/*"
+  exclude-paths:
+    - "venv/**/*"
+    - ".pytest_cache/**/*"
+    - "__pycache__/**/*"
+    - "**/__pycache__/**/*"
+    - "instance/**/*"
+    - "blacklist.db"
+    - ".git/**/*"
+  name: blacklist-service-$(date +%Y%m%d-%H%M%S)   # nombre del zip con fecha/hora
